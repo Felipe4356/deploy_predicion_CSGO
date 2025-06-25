@@ -7,6 +7,3 @@ venv/
 # Python bytecode
 __pycache__/
 
-modelo_clasificador.py
-
-modelo_regresion.py
