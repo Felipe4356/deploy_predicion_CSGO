@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulador CSGO</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f4; }
+        h1 { color: #b8bb1c; }
+        form { background: rgb(97, 95, 95); padding: 20px; margin-bottom: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(221, 220, 220, 0.1); }
+        input, select, button { margin: 5px 0; padding: 8px; width: 100%; box-sizing: border-box; }
+        button { background-color: #2980b9; color: rgb(65, 65, 65); border: none; cursor: pointer; }
+        button:hover { background-color: #3498db; }
+        .resultado { margin-top: 10px; font-weight: bold; color: #27ae60; }
+
+
+        label { display: block; margin-top: 10px; }
+        input[type="number"] { width: calc(100% - 16px); }
+        input[type="number"]:focus { border: 2px solid #2980b9; }
+        form h2 { margin-top: 0; color: #d6c64f; }
+        form button { width: auto; padding: 10px 20px; }
+        form button:disabled { background-color: #175f90; cursor: not-allowed; }
+
+        /* centrar todo colocar lado a lado*/
+
+        body, h1, form { text-align: center; }
+        form { max-width: 400px; margin: auto; }
+
+        .info-tooltip {
+            font-size: 14px;
+            color: #bb8f20;
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+        .range-info {
+            font-size: 12px;
+            color: #ffffff;
+            margin-top: 2px;
+        }
+
+        /*  agregar fondo csgo */
+        body {
+            background-image: url('https://preview.redd.it/v065cssvidh01.jpg?auto=webp&s=4feb78943c46e1b487330230b3d61524af14d804'); /* Cambia la URL por una imagen de fondo adecuada */
+            background-size: cover;
+            background-position: center;
+           
+        }
+
+        .prediction-box {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .prediction-box.win {
+            border-left: 4px solid #4CAF50;
+        }
+
+        .prediction-box.loss {
+            border-left: 4px solid #f44336;
+        }
+
+        .prediction-result {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .strategy-tip {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+
+
+
+    </style>
+</head>
+<body>
+    <h1>🎮 Simulador de Predicciones CSGO</h1>
+    
+<!-- predice valor disponible    -->
+    <!-- Formulario de Regresión -->
+    <form id="form-regresion">
+        <h2>💰 Predicción del Equipamiento</h2>
+        <p class="info-tooltip">Predice el valor del equipamiento disponible al inicio de la ronda</p>
+        
+        <label>Valor del Equipamiento del Equipo:</label>
+        <input type="number" id="team_equipment" required min="0" max="40000">
+        <p class="range-info">Rango típico: 0 - 16000</p>
+        <p class="range-info">
+            Guía de valores:<br>
+            0-1000: Eco | 1000-2500: Semi-eco | 2500-4000: Force buy | 4000+: Full buy
+        </p>
+        <button type="submit">Calcular Predicción</button>
+        <div class="resultado" id="resultado-regresion" style="font-family: 'Courier New', monospace;">$</div>
+    </form>
+<br>
+    <!-- Formulario de Clasificación -->
+       <!-- Formulario de Clasificación -->
+    <form id="form-clasificacion">
+        <h2>🏆 Predicción de Victoria</h2>
+        <p class="info-tooltip">Predice si el equipo ganará el partido basado en las condiciones actuales</p>
+
+        <label>Mapa:</label>
+       <select id="map" required>
+            <option value="0">de_inferno</option>
+            <option value="1">de_nuke</option>
+            <option value="2">de_mirage</option>
+            <option value="3">de_dust2</option>
+        </select>
+
+        <label>Equipamiento del equipo (TeamStartingEquipmentValue):</label>
+        <input type="number" id="team_equipment_clf" required min="0" max="16000">
+
+        <label>Bajas acumuladas (MatchKills):</label>
+        <input type="number" id="match_kills" required min="0" max="30">
+
+        <label>Asistencias acumuladas (MatchAssists):</label>
+        <input type="number" id="match_assists" required min="0" max="10">
+
+        <button type="submit">Predecir Resultado</button>
+        <div class="resultado" id="resultado-clasificacion"></div>
+    </form>
+
+<br>
+    <!-- Botón de Reinicio -->
+    <form id="form-reiniciar">
+        <h2>🔄 Reiniciar Simulador</h2>
+        <button type="button" onclick="location.reload()">Limpiar Predicciones</button>
+    </form>
+
+    <script>
+        // Función para mostrar recomendaciones basadas en el equipamiento
+        function getEquipmentRecommendation(value) {
+            if (value < 1000) {
+                return "💡 Recomendación: Ronda ECO - Considera pistolas básicas o guardar dinero";
+            } else if (value < 2500) {
+                return "💡 Recomendación: Semi-ECO - Puedes comprar Desert Eagle o pistolas";
+            } else if (value < 4000) {
+                return "💡 Recomendación: Force Buy - Considera SMGs o rifles económicos como FAMAS/Galil";
+            } else {
+                return "💡 Recomendación: Full Buy - Puedes comprar AK-47/M4A4 + utilidad completa";
+            }
+        }
+
+        // Mapas de CSGO
+        const mapNames = {
+            0: "de_inferno ",
+            1: "de_nuke",
+            2: "Inferno",
+            3: "de_mirage",
+            4: "de_dust2",
+            
+        };
+
+        // Regresión mejorada
+        document.getElementById("form-regresion").addEventListener("submit", async function(e) {
+            e.preventDefault();
+            const value = parseFloat(document.getElementById("team_equipment").value);
+            const response = await fetch("/predict/regresion", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ TeamStartingEquipmentValue: value })
+            });
+            const data = await response.json();
+            const prediccion = data.RoundStartingEquipmentValue_predicho.toFixed(2);
+            
+            const resultadoDiv = document.getElementById("resultado-regresion");
+            resultadoDiv.innerHTML = `
+                <div class="prediction-box">
+                    <p>💰 Predicción del dinero disponible: $${prediccion}</p>
+                    <p>${getEquipmentRecommendation(prediccion)}</p>
+                </div>
+            `;
+        });
+
+      // Clasificación con nuevas variables
+document.getElementById("form-clasificacion").addEventListener("submit", async function(e) {
+    e.preventDefault();
+    const map = parseInt(document.getElementById("map").value);
+    const teamEquip = parseFloat(document.getElementById("team_equipment_clf").value);
+    const kills = parseInt(document.getElementById("match_kills").value);
+    const assists = parseInt(document.getElementById("match_assists").value);
+
+    const response = await fetch("/predict/clasificacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            Map: map,
+            TeamStartingEquipmentValue: teamEquip,
+            MatchKills: kills,
+            MatchAssists: assists
+        })
+    });
+
+    const data = await response.json();
+    const esVictoria = data.MatchWinner_predicho === 1;
+
+    const resultadoDiv = document.getElementById("resultado-clasificacion");
+    resultadoDiv.innerHTML = `
+        <div class="prediction-box ${esVictoria ? 'win' : 'loss'}">
+            <p>🗺️ Mapa: ${mapNames[map]}</p>
+            <p>💰 Equipamiento del equipo: $${teamEquip}</p>
+            <p>🔫 Bajas: ${kills} | 🤝 Asistencias: ${assists}</p>
+            <p class="prediction-result">
+                ${esVictoria ? 
+                    '✅ Predicción: Victoria probable' : 
+                    '⚠️ Predicción: Derrota probable'}
+            </p>
+            <p class="strategy-tip">
+                ${esVictoria ? 
+                    '💡 Tip: Mantén el control del mapa y el dinero' : 
+                    '💡 Tip: Intenta guardar armas o forzar una jugada arriesgada'}
+            </p>
+        </div>
+    `;
+});
+
+    </script>
+
+</body>
+</html>
